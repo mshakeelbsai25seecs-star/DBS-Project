@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Watch History — ViewTube{% endblock %}
+
+{% block content %}
+<div class="list-page">
+  <h2 class="page-heading">
+    <i class="fa fa-history"></i> Watch History
+    <span style="color:var(--text-muted);font-size:.85rem;font-weight:400;margin-left:.5rem">
+      ({{ items|length }} video{{ 's' if items|length != 1 else '' }})
+    </span>
+  </h2>
+
+  {% if items %}
+  <div class="history-list">
+    {% for item in items %}
+    <a href="{{ url_for('video', video_id=item.video_id) }}" class="history-card">
+      <div class="history-thumb">
+        {% if item.thumbnail_url %}
+          <img src="{{ item.thumbnail_url }}" alt="{{ item.title }}">
+        {% else %}
+          <div class="history-thumb-placeholder"><i class="fa fa-play"></i></div>
+        {% endif %}
+        <span class="duration-badge-sm">{{ item.duration_formatted }}</span>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:{{ item.watch_percentage }}%"></div>
+        </div>
+      </div>
+      <div class="history-info">
+        <h3>{{ item.title }}</h3>
+        <p class="history-channel">
+          {{ item.channel_name }}
+          {% if item.is_verified %}<i class="fa fa-check-circle verified-icon"></i>{% endif %}
+        </p>
+        <p class="history-stats">
+          Watched {{ item.watch_percentage }}% of video ·
+          {{ item.watched_at.strftime('%b %d, %Y at %H:%M') if item.watched_at else '' }}
+          {% if item.completed %}
+            <span class="completed-badge"><i class="fa fa-check-circle"></i> Completed</span>
+          {% endif %}
+        </p>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="fa fa-history"></i>
+    <p>Your watch history is empty.</p>
+    <p style="font-size:.85rem;color:var(--text-muted)">Start watching videos and they'll appear here.</p>
+    <a href="{{ url_for('home') }}" class="btn btn-primary" style="margin-top:1rem">
+      <i class="fa fa-play"></i> Discover Videos
+    </a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

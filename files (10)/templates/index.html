@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}ViewTube — Home{% endblock %}
+
+{% block content %}
+<div class="page-home">
+
+  <!-- Category Filter Pills -->
+  <div class="category-pills">
+    <a href="{{ url_for('home') }}"
+       class="pill {% if not cat_filter %}active{% endif %}">🔥 All</a>
+    {% for cat in categories %}
+    <a href="{{ url_for('home') }}?category={{ cat.category_id }}"
+       class="pill {% if cat_filter == cat.category_id %}active{% endif %}">
+      {{ cat.category_name }}
+    </a>
+    {% endfor %}
+  </div>
+
+  <!-- Videos Grid -->
+  {% if videos %}
+  <div class="video-grid">
+    {% for v in videos %}
+    <a href="{{ url_for('video', video_id=v.video_id) }}" class="video-card">
+      <div class="thumbnail-wrap">
+        {% if v.thumbnail_url %}
+          <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}" class="thumbnail">
+        {% else %}
+          <div class="thumbnail-placeholder">
+            <i class="fa fa-play-circle"></i>
+          </div>
+        {% endif %}
+        <span class="duration-badge">{{ v.duration_formatted }}</span>
+      </div>
+      <div class="card-info">
+        <div class="card-avatar">{{ v.channel_name[0].upper() }}</div>
+        <div class="card-meta">
+          <h3 class="card-title">{{ v.title }}</h3>
+          <p class="card-channel">
+            {{ v.channel_name }}
+            {% if v.is_verified %}
+              <i class="fa fa-check-circle verified-icon" title="Verified"></i>
+            {% endif %}
+          </p>
+          <p class="card-stats">
+            {{ v.view_count_formatted }} views ·
+            {{ v.upload_date.strftime('%b %d, %Y') if v.upload_date else '' }}
+          </p>
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="fa fa-video-slash"></i>
+    <p>No videos found in this category.</p>
+    <a href="{{ url_for('home') }}" class="btn btn-outline">Browse all videos</a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

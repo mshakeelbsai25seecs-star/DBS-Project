@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}My Profile — ViewTube{% endblock %}
+
+{% block content %}
+<div class="list-page">
+
+  <!-- Profile Header -->
+  <div class="profile-header">
+    <div class="profile-avatar">
+      {{ (user.first_name or user.username or 'U')[0].upper() }}
+    </div>
+    <div class="profile-info">
+      <h2>{{ user.first_name or '' }} {{ user.last_name or '' }}</h2>
+      <p>@{{ user.username }}</p>
+      <p>{{ user.email }}</p>
+      {% if user.country %}
+      <p><i class="fa fa-map-marker-alt"></i> {{ user.country }}</p>
+      {% endif %}
+      <p style="margin-top:.3rem;color:var(--text-muted);font-size:.8rem">
+        Member since {{ user.created_at.strftime('%B %Y') if user.created_at else 'Unknown' }}
+        &nbsp;·&nbsp;
+        Last active {{ user.last_login.strftime('%b %d, %Y') if user.last_login else 'N/A' }}
+      </p>
+    </div>
+  </div>
+
+  <!-- Your Channels -->
+  <h3 class="section-title">
+    <i class="fa fa-tv"></i> Your Channels
+  </h3>
+
+  {% if channels %}
+  <div class="channel-cards">
+    {% for ch in channels %}
+    <a href="{{ url_for('channel', channel_id=ch.channel_id) }}" class="channel-mini-card">
+      <div class="ch-mini-avatar">{{ ch.channel_name[0].upper() }}</div>
+      <div class="ch-mini-info">
+        <strong>
+          {{ ch.channel_name }}
+          {% if ch.is_verified %}
+            <i class="fa fa-check-circle verified-icon"></i>
+          {% endif %}
+        </strong>
+        <p>
+          {{ ch.sub_count_formatted }} subscribers ·
+          {{ ch.video_count }} video{{ 's' if ch.video_count != 1 else '' }} ·
+          {{ ch.total_views_formatted }} views
+        </p>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+
+  <div style="margin-top:1rem;display:flex;gap:.75rem;flex-wrap:wrap">
+    <a href="{{ url_for('create_channel') }}" class="btn btn-outline">
+      <i class="fa fa-plus"></i> Create Another Channel
+    </a>
+    <a href="{{ url_for('upload') }}" class="btn btn-primary">
+      <i class="fa fa-upload"></i> Upload Video
+    </a>
+  </div>
+
+  {% else %}
+  <div class="empty-state" style="min-height:auto;padding:2rem 0">
+    <i class="fa fa-tv"></i>
+    <p>You haven't created any channels yet.</p>
+    <a href="{{ url_for('create_channel') }}" class="btn btn-primary" style="margin-top:1rem">
+      <i class="fa fa-plus"></i> Create Your Channel
+    </a>
+  </div>
+  {% endif %}
+
+  <!-- Quick Links -->
+  <h3 class="section-title" style="margin-top:2rem">
+    <i class="fa fa-link"></i> Quick Links
+  </h3>
+  <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+    <a href="{{ url_for('subscriptions') }}" class="btn btn-outline">
+      <i class="fa fa-rss"></i> My Subscriptions
+    </a>
+    <a href="{{ url_for('history') }}" class="btn btn-outline">
+      <i class="fa fa-history"></i> Watch History
+    </a>
+    <a href="{{ url_for('notifications') }}" class="btn btn-outline">
+      <i class="fa fa-bell"></i> Notifications
+    </a>
+  </div>
+
+</div>
+{% endblock %}

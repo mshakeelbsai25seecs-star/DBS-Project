@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}{{ ch.channel_name }} — ViewTube{% endblock %}
+
+{% block content %}
+<div class="channel-page">
+
+  <!-- Banner -->
+  <div class="channel-banner">
+    <div class="channel-banner-avatar">{{ ch.channel_name[0].upper() }}</div>
+  </div>
+
+  <!-- Channel Header -->
+  <div class="channel-header">
+    <div class="ch-header-left">
+      <div class="ch-big-avatar">{{ ch.channel_name[0].upper() }}</div>
+      <div class="ch-header-info">
+        <h1>
+          {{ ch.channel_name }}
+          {% if ch.is_verified %}
+            <i class="fa fa-check-circle verified-icon" title="Verified Channel"></i>
+          {% endif %}
+        </h1>
+        <p class="ch-owner">@{{ ch.username }}</p>
+        <p class="ch-stats-line">
+          {{ ch.sub_count_formatted }} subscribers &nbsp;·&nbsp;
+          {{ ch.video_count }} video{{ 's' if ch.video_count != 1 else '' }} &nbsp;·&nbsp;
+          {{ ch.total_views_formatted }} total views
+        </p>
+        <p class="ch-stats-line">
+          Joined {{ ch.created_at.strftime('%B %Y') if ch.created_at else '' }}
+        </p>
+        {% if ch.description %}
+        <p class="ch-desc">{{ ch.description }}</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="ch-header-right">
+      {% if is_owner %}
+        <a href="{{ url_for('upload') }}" class="btn btn-primary">
+          <i class="fa fa-upload"></i> Upload Video
+        </a>
+      {% elif session.user_id %}
+        <button id="sub-btn"
+                onclick="toggleSub({{ ch.channel_id }})"
+                class="btn {% if subscribed %}btn-subscribed{% else %}btn-subscribe{% endif %}">
+          {% if subscribed %}
+            <i class="fa fa-bell"></i> Subscribed
+          {% else %}
+            <i class="fa fa-plus"></i> Subscribe
+          {% endif %}
+        </button>
+      {% else %}
+        <a href="{{ url_for('login') }}" class="btn btn-subscribe">
+          <i class="fa fa-plus"></i> Subscribe
+        </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Videos -->
+  <h2 class="section-title">
+    <i class="fa fa-film"></i> Videos
+    <span style="color:var(--text-muted);font-weight:400;font-size:.9rem;margin-left:.5rem">
+      ({{ videos|length }})
+    </span>
+  </h2>
+
+  {% if videos %}
+  <div class="video-grid">
+    {% for v in videos %}
+    <a href="{{ url_for('video', video_id=v.video_id) }}" class="video-card">
+      <div class="thumbnail-wrap">
+        {% if v.thumbnail_url %}
+          <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}" class="thumbnail">
+        {% else %}
+          <div class="thumbnail-placeholder"><i class="fa fa-play-circle"></i></div>
+        {% endif %}
+        <span class="duration-badge">{{ v.duration_formatted }}</span>
+      </div>
+      <div class="card-info" style="padding-left:0">
+        <div class="card-meta">
+          <h3 class="card-title">{{ v.title }}</h3>
+          <p class="card-stats">
+            {{ v.view_count_formatted }} views ·
+            {{ v.upload_date.strftime('%b %d, %Y') if v.upload_date else '' }}
+          </p>
+          <p class="card-stats">
+            <i class="fa fa-thumbs-up"></i> {{ v.like_count }} &nbsp;
+            <i class="fa fa-comment"></i> {{ v.comment_count }}
+          </p>
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="fa fa-video-slash"></i>
+    <p>No videos uploaded yet.</p>
+    {% if is_owner %}
+    <a href="{{ url_for('upload') }}" class="btn btn-primary" style="margin-top:1rem">
+      <i class="fa fa-upload"></i> Upload your first video
+    </a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+function toggleSub(channelId) {
+  fetch('/api/subscribe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ channel_id: channelId })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.status !== 'ok') return;
+    const btn = document.getElementById('sub-btn');
+    if (data.action === 'subscribed') {
+      btn.className = 'btn btn-subscribed';
+      btn.innerHTML = '<i class="fa fa-bell"></i> Subscribed';
+    } else {
+      btn.className = 'btn btn-subscribe';
+      btn.innerHTML = '<i class="fa fa-plus"></i> Subscribe';
+    }
+  });
+}
+</script>
+{% endblock %}

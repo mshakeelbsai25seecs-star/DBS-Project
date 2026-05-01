@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}{% if q %}{{ q }} — Search{% else %}Search{% endif %} — ViewTube{% endblock %}
+
+{% block content %}
+<div class="search-page">
+
+  <h2 class="page-heading">
+    {% if q %}
+      Search results for "<em>{{ q }}</em>"
+      <span style="color:var(--text-muted);font-size:.85rem;font-weight:400">
+        ({{ videos|length }} result{{ 's' if videos|length != 1 else '' }})
+      </span>
+    {% else %}
+      Search ViewTube
+    {% endif %}
+  </h2>
+
+  <!-- Category Filter -->
+  <div class="category-pills" style="margin-bottom:1.2rem">
+    <a href="{{ url_for('search') }}?q={{ q }}"
+       class="pill {% if not cat_filter %}active{% endif %}">All</a>
+    {% for cat in categories %}
+    <a href="{{ url_for('search') }}?q={{ q }}&category={{ cat.category_id }}"
+       class="pill {% if cat_filter == cat.category_id %}active{% endif %}">
+      {{ cat.category_name }}
+    </a>
+    {% endfor %}
+  </div>
+
+  {% if videos %}
+  <div class="search-results">
+    {% for v in videos %}
+    <a href="{{ url_for('video', video_id=v.video_id) }}" class="search-card">
+      <div class="search-thumb">
+        {% if v.thumbnail_url %}
+          <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
+        {% else %}
+          <div class="search-thumb-placeholder"><i class="fa fa-play-circle"></i></div>
+        {% endif %}
+        <span class="duration-badge">{{ v.duration_formatted }}</span>
+      </div>
+      <div class="search-info">
+        <h3>{{ v.title }}</h3>
+        <p class="search-channel">
+          {{ v.channel_name }}
+          {% if v.is_verified %}<i class="fa fa-check-circle verified-icon"></i>{% endif %}
+        </p>
+        <p class="search-stats">
+          {{ v.view_count_formatted }} views ·
+          {{ v.upload_date.strftime('%b %d, %Y') if v.upload_date else '' }}
+        </p>
+        {% if v.category_name %}
+        <p class="search-cat"><i class="fa fa-tag"></i> {{ v.category_name }}</p>
+        {% endif %}
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+
+  {% elif q %}
+  <div class="empty-state">
+    <i class="fa fa-search"></i>
+    <p>No results found for "<strong>{{ q }}</strong>".</p>
+    <p style="font-size:.85rem;color:var(--text-muted)">Try different keywords or browse categories.</p>
+    <a href="{{ url_for('home') }}" class="btn btn-outline" style="margin-top:1rem">Browse all videos</a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

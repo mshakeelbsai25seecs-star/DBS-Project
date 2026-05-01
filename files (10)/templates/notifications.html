@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Notifications — ViewTube{% endblock %}
+
+{% block content %}
+<div class="list-page">
+  <h2 class="page-heading">
+    <i class="fa fa-bell"></i> Notifications
+    <span style="color:var(--text-muted);font-size:.85rem;font-weight:400;margin-left:.5rem">
+      ({{ notifs|length }})
+    </span>
+  </h2>
+
+  {% if notifs %}
+  <div class="notif-list">
+    {% for n in notifs %}
+    <div class="notif-item {% if not n.is_read %}notif-unread{% endif %}">
+      <div class="notif-icon">
+        {% if n.notification_type == 'new_video' %}
+          <i class="fa fa-video" style="color:var(--yt-red)"></i>
+        {% elif n.notification_type == 'new_comment' %}
+          <i class="fa fa-comment" style="color:var(--accent-blue)"></i>
+        {% elif n.notification_type == 'milestone' %}
+          <i class="fa fa-trophy" style="color:#f0c040"></i>
+        {% else %}
+          <i class="fa fa-bell"></i>
+        {% endif %}
+      </div>
+      <div class="notif-body">
+        <p class="notif-msg">{{ n.message }}</p>
+        <p class="notif-time">
+          {{ n.created_at.strftime('%B %d, %Y at %H:%M') if n.created_at else '' }}
+          {% if not n.is_read %}
+            <span style="color:var(--yt-red);margin-left:.4rem;font-size:.75rem">● New</span>
+          {% endif %}
+        </p>
+      </div>
+      {% if n.video_id %}
+      <a href="{{ url_for('video', video_id=n.video_id) }}" class="notif-action-btn" title="Watch video">
+        <i class="fa fa-play"></i>
+      </a>
+      {% elif n.channel_id %}
+      <a href="{{ url_for('channel', channel_id=n.channel_id) }}" class="notif-action-btn" title="View channel">
+        <i class="fa fa-tv"></i>
+      </a>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="fa fa-bell-slash"></i>
+    <p>You have no notifications yet.</p>
+    <p style="font-size:.85rem;color:var(--text-muted)">Subscribe to channels to get notified about new videos.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

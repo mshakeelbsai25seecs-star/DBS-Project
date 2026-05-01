@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+{% block title %}Upload Video — ViewTube{% endblock %}
+
+{% block content %}
+<div class="form-page">
+  <div class="form-card" style="max-width:620px">
+    <h2><i class="fa fa-cloud-upload-alt"></i> Upload Video</h2>
+
+    {% if channels %}
+    <div id="upload-form-wrap">
+
+      <!-- Video File Drop Zone -->
+      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('video_file').click()">
+        <div id="drop-inner">
+          <i class="fa fa-film" style="font-size:2.5rem;color:var(--text-muted)"></i>
+          <p style="margin:.5rem 0 .25rem;font-weight:600">Click or drag and drop your video here</p>
+          <p style="font-size:.8rem;color:var(--text-muted)">MP4, WebM, MOV, AVI, MKV — max 500 MB</p>
+        </div>
+        <div id="drop-selected" style="display:none;flex-direction:column;align-items:center;gap:.3rem">
+          <i class="fa fa-check-circle" style="font-size:2rem;color:#2ba640"></i>
+          <p id="selected-filename" style="margin:0;font-weight:600;word-break:break-all"></p>
+          <p id="selected-filesize" style="margin:0;font-size:.8rem;color:var(--text-muted)"></p>
+        </div>
+        <input type="file" id="video_file" name="video_file"
+               accept="video/mp4,video/webm,video/ogg,video/quicktime,video/x-msvideo,.mkv"
+               style="display:none" required onchange="handleVideoSelect(this)">
+      </div>
+
+      <!-- REAL progress bar — updated by XHR -->
+      <div id="upload-progress" style="display:none;margin:.75rem 0 1rem">
+        <div style="height:8px;border-radius:4px;background:var(--border-light);overflow:hidden">
+          <div id="progress-fill"
+               style="height:100%;width:0%;border-radius:4px;background:var(--yt-red);transition:width .15s linear"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:.4rem">
+          <span id="progress-text" style="font-size:.82rem;color:var(--text-muted)">Uploading...</span>
+          <span id="progress-speed" style="font-size:.82rem;color:var(--text-muted)"></span>
+        </div>
+      </div>
+
+      <!-- Fields -->
+      <div class="auth-form" style="margin-top:1rem">
+        <div class="form-group">
+          <label>Channel <span class="required">*</span></label>
+          <select id="f-channel" required>
+            <option value="">— Select your channel —</option>
+            {% for ch in channels %}
+            <option value="{{ ch.channel_id }}">{{ ch.channel_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Title <span class="required">*</span></label>
+          <input type="text" id="f-title" required autofocus
+                 placeholder="Enter a title..." maxlength="200">
+        </div>
+
+        <div class="form-group">
+          <label>Description</label>
+          <textarea id="f-description" rows="3" placeholder="Describe your video..."></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Category</label>
+            <select id="f-category">
+              <option value="">— None —</option>
+              {% for cat in categories %}
+              <option value="{{ cat.category_id }}">{{ cat.category_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Resolution</label>
+            <select id="f-resolution">
+              <option value="1080p">1080p Full HD</option>
+              <option value="720p">720p HD</option>
+              <option value="480p">480p SD</option>
+              <option value="4K">4K Ultra HD</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Thumbnail -->
+        <div class="form-group">
+          <label>Thumbnail <span style="color:var(--text-muted);font-weight:400">(optional)</span></label>
+          <div style="display:flex;align-items:center;gap:1rem">
+            <div id="thumb-preview"
+                 style="width:120px;height:68px;border-radius:var(--radius-sm);
+                        background:var(--bg-secondary);border:1px solid var(--border-light);
+                        display:flex;align-items:center;justify-content:center;
+                        color:var(--text-muted);font-size:1.5rem;overflow:hidden;flex-shrink:0">
+              <i class="fa fa-image"></i>
+            </div>
+            <div>
+              <button type="button" class="btn btn-outline btn-sm"
+                      onclick="document.getElementById('thumbnail_file').click()">
+                <i class="fa fa-upload"></i> Choose Image
+              </button>
+              <p style="font-size:.78rem;color:var(--text-muted);margin-top:.4rem">
+                JPG, PNG, WebP — max 5 MB
+              </p>
+              <input type="file" id="thumbnail_file" accept="image/*"
+                     style="display:none" onchange="handleThumbSelect(this)">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group checkbox-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="f-public" checked>
+            <span>Make this video public</span>
+          </label>
+        </div>
+
+        <button type="button" class="btn btn-primary btn-full" id="submit-btn"
+                onclick="startUpload()">
+          <i class="fa fa-cloud-upload-alt"></i> Upload Video
+        </button>
+      </div>
+    </div>
+
+    <!-- Success message (shown after upload) -->
+    <div id="upload-success" style="display:none;text-align:center;padding:2rem 0">
+      <i class="fa fa-check-circle" style="font-size:3rem;color:#2ba640;margin-bottom:.75rem;display:block"></i>
+      <h3 style="margin-bottom:.5rem">Upload Complete!</h3>
+      <p style="color:var(--text-muted);margin-bottom:1.5rem">Your video has been uploaded successfully.</p>
+      <a id="watch-link" href="#" class="btn btn-primary">
+        <i class="fa fa-play"></i> Watch Video
+      </a>
+    </div>
+
+    {% else %}
+    <div class="empty-state" style="min-height:auto;padding:2rem 0">
+      <i class="fa fa-tv"></i>
+      <p>You need a channel before uploading videos.</p>
+      <a href="{{ url_for('create_channel') }}" class="btn btn-primary" style="margin-top:1rem">
+        <i class="fa fa-plus"></i> Create a Channel
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<style>
+.drop-zone {
+  border: 2px dashed var(--border-light);
+  border-radius: var(--radius);
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+  background: var(--bg-input);
+}
+.drop-zone:hover, .drop-zone.dragover {
+  border-color: var(--yt-red);
+  background: rgba(255,0,0,.04);
+}
+</style>
+
+<script>
+let selectedVideoFile = null;
+let selectedThumbFile = null;
+let uploadStartTime   = null;
+
+// ── Drag & Drop ──────────────────────────────────────────────
+const dropZone = document.getElementById('drop-zone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) { selectedVideoFile = file; showVideoSelected(file); }
+});
+
+function handleVideoSelect(input) {
+  if (input.files && input.files[0]) {
+    selectedVideoFile = input.files[0];
+    showVideoSelected(input.files[0]);
+  }
+}
+
+function showVideoSelected(file) {
+  document.getElementById('drop-inner').style.display    = 'none';
+  document.getElementById('drop-selected').style.display = 'flex';
+  document.getElementById('selected-filename').textContent = file.name;
+  document.getElementById('selected-filesize').textContent =
+    (file.size / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function handleThumbSelect(input) {
+  if (!input.files || !input.files[0]) return;
+  selectedThumbFile = input.files[0];
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('thumb-preview').innerHTML =
+      '<img src="' + e.target.result + '" style="width:100%;height:100%;object-fit:cover">';
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+// ── Real XHR Upload with progress ────────────────────────────
+function startUpload() {
+  // Validate
+  if (!selectedVideoFile) {
+    alert('Please select a video file first.'); return;
+  }
+  const channel = document.getElementById('f-channel').value;
+  const title   = document.getElementById('f-title').value.trim();
+  if (!channel) { alert('Please select a channel.'); return; }
+  if (!title)   { alert('Please enter a title.'); return; }
+
+  // Build FormData — same field names Flask expects
+  const fd = new FormData();
+  fd.append('video_file',   selectedVideoFile);
+  fd.append('channel_id',   channel);
+  fd.append('title',        title);
+  fd.append('description',  document.getElementById('f-description').value);
+  fd.append('category_id',  document.getElementById('f-category').value);
+  fd.append('resolution',   document.getElementById('f-resolution').value);
+  if (document.getElementById('f-public').checked) fd.append('is_public', 'on');
+  if (selectedThumbFile) fd.append('thumbnail_file', selectedThumbFile);
+
+  // UI: disable button, show progress
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Uploading...';
+  document.getElementById('upload-progress').style.display = 'block';
+  uploadStartTime = Date.now();
+
+  const xhr = new XMLHttpRequest();
+
+  // ── REAL progress event ──────────────────────────────────
+  xhr.upload.addEventListener('progress', e => {
+    if (!e.lengthComputable) return;
+
+    const pct      = Math.round((e.loaded / e.total) * 100);
+    const elapsed  = (Date.now() - uploadStartTime) / 1000;   // seconds
+    const speedMBs = (e.loaded / (1024 * 1024)) / elapsed;    // MB/s
+    const remaining = ((e.total - e.loaded) / (1024 * 1024)) / speedMBs; // seconds left
+
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('progress-text').textContent =
+      pct + '% — ' + (e.loaded / (1024*1024)).toFixed(1) + ' / ' +
+      (e.total / (1024*1024)).toFixed(1) + ' MB';
+    document.getElementById('progress-speed').textContent =
+      speedMBs.toFixed(1) + ' MB/s · ' + Math.ceil(remaining) + 's left';
+  });
+
+  // ── Upload complete ──────────────────────────────────────
+  xhr.upload.addEventListener('load', () => {
+    document.getElementById('progress-fill').style.width = '100%';
+    document.getElementById('progress-text').textContent = 'Processing on server...';
+    document.getElementById('progress-speed').textContent = '';
+  });
+
+  // ── Server responded ─────────────────────────────────────
+  xhr.addEventListener('load', () => {
+    if (xhr.status === 200 || xhr.status === 302) {
+      // Try to parse redirect URL from response
+      // Flask redirects — the final URL after redirect is in xhr.responseURL
+      const finalUrl = xhr.responseURL;
+      document.getElementById('upload-form-wrap').style.display = 'none';
+      document.getElementById('upload-success').style.display   = 'block';
+      document.getElementById('watch-link').href = finalUrl;
+
+      // Auto redirect after 2 seconds
+      setTimeout(() => { window.location.href = finalUrl; }, 2000);
+    } else {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa fa-cloud-upload-alt"></i> Upload Video';
+      document.getElementById('upload-progress').style.display = 'none';
+      alert('Upload failed (status ' + xhr.status + '). Please try again.');
+    }
+  });
+
+  xhr.addEventListener('error', () => {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa fa-cloud-upload-alt"></i> Upload Video';
+    alert('Network error during upload. Please check your connection and try again.');
+  });
+
+  xhr.open('POST', '{{ url_for("upload") }}');
+  xhr.send(fd);
+}
+</script>
+{% endblock %}

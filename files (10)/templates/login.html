@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Sign In — ViewTube{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <i class="fab fa-youtube" style="color:#ff0000;font-size:2.2rem"></i>
+      <h1>ViewTube</h1>
+    </div>
+    <h2>Sign In</h2>
+    <p class="auth-sub">to continue to ViewTube</p>
+
+    <form method="POST" class="auth-form">
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" required autofocus
+               placeholder="Enter your username" autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label for="pw">Password</label>
+        <div class="pw-wrap">
+          <input type="password" id="pw" name="password" required
+                 placeholder="Enter your password" autocomplete="current-password">
+          <button type="button" class="pw-toggle" onclick="togglePw()">
+            <i class="fa fa-eye" id="pw-eye"></i>
+          </button>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full">Sign In</button>
+    </form>
+
+    <div class="auth-footer">
+      Don't have an account?
+      <a href="{{ url_for('register') }}">Create account</a>
+    </div>
+
+    <div class="demo-creds">
+      <strong>Demo credentials:</strong><br>
+      Username: <code>viewer_one</code> &nbsp;·&nbsp; Password: <code>password123</code><br>
+      <small style="color:#666;margin-top:.3rem;display:block">
+        Or try: ali_hussain, sarah_tech, coding_mentor, dr_history
+      </small>
+    </div>
+  </div>
+</div>
+
+<script>
+function togglePw() {
+  const pw  = document.getElementById('pw');
+  const eye = document.getElementById('pw-eye');
+  pw.type   = pw.type === 'password' ? 'text' : 'password';
+  eye.className = pw.type === 'password' ? 'fa fa-eye' : 'fa fa-eye-slash';
+}
+</script>
+{% endblock %}

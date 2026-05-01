@@ -1,0 +1,373 @@
+{% extends "base.html" %}
+{% block title %}{{ vid.title }} — ViewTube{% endblock %}
+
+{% block content %}
+<div class="video-page">
+
+  <!-- ===== LEFT: Player + Info ===== -->
+  <div class="video-main">
+
+    <!-- HTML5 Video Player -->
+    <div class="player-box">
+      {% if video_src %}
+        <!-- Real video file available — use HTML5 player -->
+        <video id="main-player" class="html5-player" controls preload="metadata"
+               poster="{{ vid.thumbnail_url or '' }}">
+          <source src="{{ video_src }}" type="video/mp4">
+          <source src="{{ video_src }}" type="video/webm">
+          Your browser does not support the video tag.
+        </video>
+      {% elif vid.thumbnail_url %}
+        <!-- No video file yet — show thumbnail with overlay -->
+        <img src="{{ vid.thumbnail_url }}" alt="{{ vid.title }}" class="player-thumb">
+        <div class="player-overlay">
+          <i class="fa fa-play-circle play-icon"></i>
+        </div>
+      {% else %}
+        <!-- No file and no thumbnail — styled placeholder -->
+        <div class="player-placeholder">
+          <i class="fa fa-play-circle"></i>
+          <p style="font-size:.9rem;margin-top:.5rem">{{ vid.title }}</p>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Title -->
+    <h1 class="video-title">{{ vid.title }}</h1>
+
+    <!-- Stats + Reactions Row -->
+    <div class="video-meta-row">
+      <div class="video-stats">
+        <span><i class="fa fa-eye"></i> {{ vid.view_count_formatted }} views</span>
+        <span>·</span>
+        <span>{{ vid.upload_date.strftime('%B %d, %Y') if vid.upload_date else 'Unknown date' }}</span>
+        <span>·</span>
+        <span><i class="fa fa-clock"></i> {{ vid.duration_formatted }}</span>
+        {% if vid.category_name %}
+        <span>·</span>
+        <span class="cat-badge">{{ vid.category_name }}</span>
+        {% endif %}
+        {% if vid.resolution %}
+        <span>·</span>
+        <span class="cat-badge">{{ vid.resolution }}</span>
+        {% endif %}
+      </div>
+
+      <div class="reaction-btns">
+        <button class="react-btn {% if reaction == 1 %}active-like{% endif %}"
+                id="like-btn"
+                onclick="react(1)"
+                {% if not session.user_id %}disabled title="Sign in to like"{% endif %}>
+          <i class="fa fa-thumbs-up"></i>
+          <span id="like-count">{{ vid.like_count }}</span>
+        </button>
+        <button class="react-btn {% if reaction == -1 %}active-dislike{% endif %}"
+                id="dislike-btn"
+                onclick="react(0)"
+                {% if not session.user_id %}disabled title="Sign in to dislike"{% endif %}>
+          <i class="fa fa-thumbs-down"></i>
+          <span id="dislike-count">{{ vid.dislike_count }}</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Channel Info Row -->
+    <div class="channel-info-row">
+      <a href="{{ url_for('channel', channel_id=vid.channel_id) }}" class="channel-link">
+        <div class="ch-avatar">{{ vid.channel_name[0].upper() }}</div>
+        <div class="ch-meta">
+          <span class="ch-name">
+            {{ vid.channel_name }}
+            {% if vid.is_verified %}<i class="fa fa-check-circle verified-icon"></i>{% endif %}
+          </span>
+          <span class="ch-subs">{{ vid.sub_count_formatted }} subscribers</span>
+        </div>
+      </a>
+
+      {% if session.user_id %}
+        {% if vid.owner_user_id != session.user_id %}
+          <button id="sub-btn"
+                  onclick="toggleSub({{ vid.channel_id }})"
+                  class="btn {% if subscribed %}btn-subscribed{% else %}btn-subscribe{% endif %}">
+            {% if subscribed %}
+              <i class="fa fa-bell"></i> Subscribed
+            {% else %}
+              <i class="fa fa-plus"></i> Subscribe
+            {% endif %}
+          </button>
+        {% else %}
+          <a href="{{ url_for('channel', channel_id=vid.channel_id) }}"
+             class="btn btn-outline">
+            <i class="fa fa-cog"></i> Manage Channel
+          </a>
+        {% endif %}
+      {% else %}
+        <a href="{{ url_for('login') }}" class="btn btn-subscribe">
+          <i class="fa fa-plus"></i> Subscribe
+        </a>
+      {% endif %}
+    </div>
+
+    <!-- Description Box -->
+    <div class="description-box">
+      <p id="desc-text">{{ vid.description or 'No description provided.' }}</p>
+      {% if vid.description and vid.description|length > 200 %}
+        <button class="show-more-btn" onclick="toggleDesc()">Show more</button>
+      {% endif %}
+    </div>
+
+    <!-- ===== COMMENTS ===== -->
+    <div class="comments-section">
+      <h3><i class="fa fa-comments"></i> {{ vid.comment_count }} Comments</h3>
+
+      {% if session.user_id %}
+      <div class="add-comment-row">
+        <div class="comment-avatar">
+          {{ (session.first_name or session.username or 'U')[0].upper() }}
+        </div>
+        <div class="comment-input-wrap">
+          <textarea id="new-comment"
+                    placeholder="Add a comment..."
+                    rows="1"
+                    oninput="autoResize(this)"
+                    onfocus="document.getElementById('comment-actions').style.display='flex'"></textarea>
+          <div class="comment-actions" id="comment-actions" style="display:none">
+            <button class="btn btn-sm btn-ghost" onclick="cancelComment()">Cancel</button>
+            <button class="btn btn-sm btn-primary" onclick="postComment(null)">
+              <i class="fa fa-paper-plane"></i> Comment
+            </button>
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div class="login-to-comment">
+        <a href="{{ url_for('login') }}">Sign in</a> to leave a comment.
+      </div>
+      {% endif %}
+
+      <!-- Comment List -->
+      <div class="comment-list" id="comment-list">
+        {% for c in comments %}
+        <div class="comment-item" id="comment-{{ c.comment_id }}">
+          <div class="comment-avatar-sm">{{ c.username[0].upper() }}</div>
+          <div class="comment-body">
+            <div class="comment-header">
+              <span class="comment-user">{{ c.username }}</span>
+              <span class="comment-time">{{ c.created_at.strftime('%Y-%m-%d') if c.created_at else '' }}</span>
+              {% if c.is_edited %}<span class="edited-badge">(edited)</span>{% endif %}
+            </div>
+            <p class="comment-text">{{ c.comment_text }}</p>
+            <div class="comment-footer">
+              <span class="comment-likes"><i class="fa fa-thumbs-up"></i> {{ c.like_count }}</span>
+              {% if session.user_id %}
+              <button class="reply-toggle-btn" onclick="toggleReplyBox({{ c.comment_id }})">
+                <i class="fa fa-reply"></i> Reply
+              </button>
+              {% endif %}
+              {% if c.reply_count > 0 %}
+              <button class="view-replies-btn" onclick="toggleReplies({{ c.comment_id }})">
+                <i class="fa fa-caret-down" id="caret-{{ c.comment_id }}"></i>
+                <span id="reply-label-{{ c.comment_id }}">
+                  {{ c.reply_count }} repl{{ 'y' if c.reply_count == 1 else 'ies' }}
+                </span>
+              </button>
+              {% endif %}
+            </div>
+
+            <!-- Reply textarea (hidden by default) -->
+            {% if session.user_id %}
+            <div class="reply-input-box" id="reply-box-{{ c.comment_id }}" style="display:none">
+              <textarea id="reply-text-{{ c.comment_id }}"
+                        placeholder="Add a reply..."
+                        rows="1"
+                        oninput="autoResize(this)"></textarea>
+              <div class="comment-actions" style="margin-top:.4rem">
+                <button class="btn btn-sm btn-ghost"
+                        onclick="toggleReplyBox({{ c.comment_id }})">Cancel</button>
+                <button class="btn btn-sm btn-primary"
+                        onclick="postComment({{ c.comment_id }})">Reply</button>
+              </div>
+            </div>
+            {% endif %}
+
+            <!-- Replies list (hidden by default) -->
+            <div class="replies-list" id="replies-{{ c.comment_id }}" style="display:none">
+              {% if c.comment_id in replies_map %}
+                {% for rep in replies_map[c.comment_id] %}
+                <div class="comment-item reply-item">
+                  <div class="comment-avatar-sm small">{{ rep.username[0].upper() }}</div>
+                  <div class="comment-body">
+                    <div class="comment-header">
+                      <span class="comment-user">{{ rep.username }}</span>
+                      <span class="comment-time">{{ rep.created_at.strftime('%Y-%m-%d') if rep.created_at else '' }}</span>
+                    </div>
+                    <p class="comment-text">{{ rep.comment_text }}</p>
+                    <div class="comment-footer">
+                      <span class="comment-likes"><i class="fa fa-thumbs-up"></i> {{ rep.like_count }}</span>
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+              {% endif %}
+            </div>
+
+          </div>
+        </div>
+        {% endfor %}
+      </div><!-- /comment-list -->
+    </div><!-- /comments-section -->
+
+  </div><!-- /video-main -->
+
+  <!-- ===== RIGHT: Suggested Videos ===== -->
+  <aside class="video-sidebar">
+    <h3 class="sidebar-heading">Up next</h3>
+    {% for sv in suggested %}
+    <a href="{{ url_for('video', video_id=sv.video_id) }}" class="suggested-card">
+      <div class="sug-thumb">
+        {% if sv.thumbnail_url %}
+          <img src="{{ sv.thumbnail_url }}" alt="{{ sv.title }}">
+        {% else %}
+          <div class="sug-thumb-placeholder"><i class="fa fa-play"></i></div>
+        {% endif %}
+        <span class="duration-badge-sm">{{ sv.duration_formatted }}</span>
+      </div>
+      <div class="sug-info">
+        <p class="sug-title">{{ sv.title }}</p>
+        <p class="sug-channel">
+          {{ sv.channel_name }}
+          {% if sv.is_verified %}<i class="fa fa-check-circle verified-icon"></i>{% endif %}
+        </p>
+        <p class="sug-stats">{{ sv.view_count_formatted }} views</p>
+      </div>
+    </a>
+    {% endfor %}
+  </aside>
+
+</div><!-- /video-page -->
+
+<script>
+const VIDEO_ID = {{ vid.video_id }};
+
+/* ---- Like / Dislike ---- */
+function react(type) {
+  fetch('/api/react_video', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ video_id: VIDEO_ID, reaction: type })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.status !== 'ok') return;
+    document.getElementById('like-count').textContent    = data.likes;
+    document.getElementById('dislike-count').textContent = data.dislikes;
+    const likeBtn    = document.getElementById('like-btn');
+    const dislikeBtn = document.getElementById('dislike-btn');
+    likeBtn.classList.remove('active-like');
+    dislikeBtn.classList.remove('active-dislike');
+    if (data.action === 'liked')    likeBtn.classList.add('active-like');
+    if (data.action === 'disliked') dislikeBtn.classList.add('active-dislike');
+  });
+}
+
+/* ---- Subscribe / Unsubscribe ---- */
+function toggleSub(channelId) {
+  fetch('/api/subscribe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ channel_id: channelId })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.status !== 'ok') return;
+    const btn = document.getElementById('sub-btn');
+    if (data.action === 'subscribed') {
+      btn.className = 'btn btn-subscribed';
+      btn.innerHTML = '<i class="fa fa-bell"></i> Subscribed';
+    } else {
+      btn.className = 'btn btn-subscribe';
+      btn.innerHTML = '<i class="fa fa-plus"></i> Subscribe';
+    }
+    // Update sub count display
+    const subEl = document.querySelector('.ch-subs');
+    if (subEl && data.sub_count) subEl.textContent = data.sub_count + ' subscribers';
+  });
+}
+
+/* ---- Comments ---- */
+function cancelComment() {
+  document.getElementById('new-comment').value = '';
+  document.getElementById('comment-actions').style.display = 'none';
+}
+
+function postComment(parentId) {
+  const textEl = parentId
+    ? document.getElementById('reply-text-' + parentId)
+    : document.getElementById('new-comment');
+  const text = textEl.value.trim();
+  if (!text) return;
+
+  fetch('/api/comment', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ video_id: VIDEO_ID, parent_comment_id: parentId, comment_text: text })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.status !== 'ok') { alert(data.message || 'Failed to post.'); return; }
+    textEl.value = '';
+    const initial = data.username ? data.username[0].toUpperCase() : '?';
+    const html = `
+      <div class="comment-item ${parentId ? 'reply-item' : ''}" id="comment-${data.comment_id}">
+        <div class="comment-avatar-sm ${parentId ? 'small' : ''}">${initial}</div>
+        <div class="comment-body">
+          <div class="comment-header">
+            <span class="comment-user">${data.username}</span>
+            <span class="comment-time">just now</span>
+          </div>
+          <p class="comment-text">${data.text}</p>
+          <div class="comment-footer">
+            <span class="comment-likes"><i class="fa fa-thumbs-up"></i> 0</span>
+          </div>
+        </div>
+      </div>`;
+    if (parentId) {
+      toggleReplyBox(parentId);
+      const replyList = document.getElementById('replies-' + parentId);
+      replyList.style.display = 'block';
+      replyList.insertAdjacentHTML('beforeend', html);
+    } else {
+      cancelComment();
+      document.getElementById('comment-list').insertAdjacentHTML('afterbegin', html);
+    }
+  });
+}
+
+function toggleReplyBox(id) {
+  const box = document.getElementById('reply-box-' + id);
+  const isHidden = box.style.display === 'none' || box.style.display === '';
+  box.style.display = isHidden ? 'block' : 'none';
+  if (isHidden) document.getElementById('reply-text-' + id).focus();
+}
+
+function toggleReplies(id) {
+  const el    = document.getElementById('replies-' + id);
+  const caret = document.getElementById('caret-' + id);
+  const open  = el.style.display === 'none' || el.style.display === '';
+  el.style.display  = open ? 'flex' : 'none';
+  if (caret) caret.className = open ? 'fa fa-caret-up' : 'fa fa-caret-down';
+}
+
+/* ---- Description expand ---- */
+const descText = document.getElementById('desc-text');
+let descExpanded = false;
+if (descText) descText.style.webkitLineClamp = '3';
+
+function toggleDesc() {
+  descExpanded = !descExpanded;
+  descText.style.webkitLineClamp = descExpanded ? 'unset' : '3';
+  const btn = document.querySelector('.show-more-btn');
+  if (btn) btn.textContent = descExpanded ? 'Show less' : 'Show more';
+}
+</script>
+{% endblock %}
